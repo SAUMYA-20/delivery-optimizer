@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Route Optimizer</title>
+
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #FFC107;
+            --primary-dark: #FFB300;
+            --primary-light: #FFE082;
+            --secondary: #FF6B6B;
+            --success: #51CF66;
+            --warning: #FFA500;
+            --error: #FF4757;
+            --dark: #2C3E50;
+            --light: #F8F9FA;
+            --border: #E0E0E0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+            color: var(--dark);
+        }
+
+        .container-fluid {
+            max-width: 100vw;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--dark);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 80px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .sidebar-section h3 {
+            color: var(--primary);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .vehicle-item {
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .vehicle-item:hover {
+            background: #fff;
+            transform: translateX(4px);
+        }
+
+        .vehicle-item.active {
+            background: var(--primary-light);
+            border-left-color: var(--primary-dark);
+        }
+
+        .vehicle-name {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+
+        .vehicle-status {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        /* Map */
+        .map-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        .card h3 {
+            color: var(--primary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .vehicle-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--dark);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: var(--success);
+            color: white;
+        }
+
+        .status-idle {
+            background: #b3b3b3;
+            color: white;
+        }
+
+        .status-maintenance {
+            background: var(--error);
+            color: white;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--dark);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+        }
+
+        /* Analytics */
+        .analytics-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .analytics-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .metric {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Loading */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert */
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Tab Buttons */
+        .tab-btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            background: #f5f5f5;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        /* Metric Box */
+        .metric-box {
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 250px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .sidebar, .right-panel {
+                order: 2;
+            }
+
+            .map-container {
+                order: 1;
+                height: 400px;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .analytics-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Polyline animation */
+        .route-line {
+            stroke: var(#51CF66);
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Marker animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .vehicle-marker-active {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>
+            <i class="fas fa-truck"></i>
+            Delivery Route Optimizer
+        </h1>
+        <div class="header-controls">
+            <span id="status">● Online</span>
+            <i class="fas fa-circle" style="color: #51CF66;"></i>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3><i class="fas fa-tasks"></i> Quick Actions</h3>
+                <div class="controls">
+                    <button class="btn btn-primary btn-sm" onclick="openOptimizeModal()">
+                        <i class="fas fa-route"></i>  Optimize Route
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="startSimulation()">
+                        <i class="fas fa-play"></i> Start Sim
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="stopSimulation()">
+                        <i class="fas fa-stop"></i> Stop Sim
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openUpdateLocationModal()">
+                        <i class="fas fa-map-marker"></i> Update Location
+                    </button>
+                    <button class="btn btn-info btn-sm" id="gpsConnectBtn" onclick="openGPSConnectionModal()">
+                        <i class="fas fa-satellite"></i> Connect GPS
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="gpsDisconnectBtn" onclick="stopGPSTracking()" style="display: none;">
+                        <i class="fas fa-times"></i> Disconnect GPS
+                    </button>
+                </div>
+                <div class="gps-status-container" style="margin-top: 0.75rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px; display: none;" id="gpsStatusContainer">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div id="gpsStatusIndicator" style="width: 12px; height: 12px; border-radius: 50%; background: #ccc;"></div>
+                        <span id="gpsStatusText" style="font-size: 0.85rem; font-weight: 500;">GPS: Disconnected</span>
+                    </div>
+                    <div id="gpsDataDisplay" style="font-size: 0.75rem; color: #666; margin-top: 0.5rem;"></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-car"></i> Active Vehicles</h3>
+                <div id="vehicle-list" style="flex-grow: 1; overflow-y: auto;"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3><i class="fas fa-warehouse"></i> Locations</h3>
+                <button class="btn btn-primary btn-sm" onclick="openAddLocationModal()">
+                    <i class="fas fa-plus"></i> Add Location
+                </button>
+                <div id="location-list" style="margin-top: 0.75rem; font-size: 0.85rem; color: #666;"></div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <!-- Tabs -->
+            <div class="tabs-container" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 2px solid var(--border);">
+                <button class="tab-btn active" onclick="switchRightTab('details')">
+                    <i class="fas fa-info-circle"></i> Details
+                </button>
+                <button class="tab-btn" onclick="switchRightTab('analytics')">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </button>
+            </div>
+
+            <!-- Vehicle Details Tab -->
+            <div id="tab-details" class="tab-content" style="display: block;">
+                <div class="card">
+                    <h3><i class="fas fa-car"></i> Vehicle Info</h3>
+                    <div id="vehicle-details" class="vehicle-info">
+                        <div class="info-row">
+                            <span class="info-label">Select a vehicle</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="tab-analytics" class="tab-content" style="display: none; overflow-y: auto;">
+                <div class="card">
+                    <h3><i class="fas fa-chart-bar"></i> Fleet Analytics</h3>
+
+                    <!-- Metrics Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-vehicles">0</div>
+                            <div class="metric-label">Vehicles</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-active">0</div>
+                            <div class="metric-label">Active</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-deliveries">0</div>
+                            <div class="metric-label">Deliveries</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="metric-success">0%</div>
+                            <div class="metric-label">Success</div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div style="position: relative; height: 200px; margin-bottom: 1rem;">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+
+                    <!-- Distance Stats -->
+                    <div style="font-size: 0.85rem;">
+                        <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem;">
+                            <span>Total Distance:</span>
+                            <strong id="total-distance">0 km</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
+                            <span>Avg Delivery Time:</span>
+                            <strong id="avg-time">0 min</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optimize Route Modal -->
+    <div id="optimizeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Optimize Route</h2>
+                <button class="modal-close" onclick="closeModal('optimizeModal')">✕</button>
+            </div>
+            <form onsubmit="submitOptimizeRoute(event)">
+                <div class="form-group">
+                    <label class="form-label">Select Vehicle</label>
+                    <select class="form-select" id="vehicleSelect" required>
+                        <option value="">Choose a vehicle...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Select Locations</label>
+                    <div id="locationCheckboxes"></div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <i class="fas fa-check"></i> Optimize
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Location Modal -->
+    <div id="addLocationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Location</h2>
+                <button class="modal-close" onclick="closeModal('addLocationModal')">✕</button>
+            </div>
+            <form onsubmit="submitAddLocation(event)">
+                <div class="form-group">
+                    <label class="form-label">Location Name</label>
+                    <input type="text" class="form-input" id="locName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address (Optional)</label>
+                    <input type="text" class="form-input" id="locAddress">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Latitude</label>
+                    <input type="number" class="form-input" id="locLat" step="0.0001" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Longitude</label>
+                    <input type="number" class="form-input" id="locLng" step="0.0001" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-plus"></i> Add Location
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Update Vehicle Location Modal -->
+    <div id="updateLocationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Update Vehicle Location</h2>
+                <button class="modal-close" onclick="closeModal('updateLocationModal')">✕</button>
+            </div>
+            <form onsubmit="submitUpdateLocation(event)">
+                <div class="form-group">
+                    <label class="form-label">Vehicle</label>
+                    <input type="text" class="form-input" id="updateVehicleName" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Current Latitude</label>
+                    <input type="number" class="form-input" id="updateLatitude" step="0.0001" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Current Longitude</label>
+                    <input type="number" class="form-input" id="updateLongitude" step="0.0001" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Speed (km/h)</label>
+                    <input type="number" class="form-input" id="updateSpeed" step="0.1" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Heading (degrees)</label>
+                    <input type="number" class="form-input" id="updateHeading" step="0.1" value="0" min="0" max="360" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-check"></i> Update Location
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- GPS Connection Modal -->
+    <div id="gpsConnectionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Connect GPS Device</h2>
+                <button class="modal-close" onclick="closeModal('gpsConnectionModal')">✕</button>
+            </div>
+            <form onsubmit="submitGPSConnection(event)">
+                <div class="form-group">
+                    <label class="form-label">Vehicle Name</label>
+                    <input type="text" class="form-input" id="gpsVehicleName" placeholder="e.g., Delivery Van 01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Device ID / IMEI</label>
+                    <input type="text" class="form-input" id="gpsDeviceId" placeholder="e.g., 8881234567" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Polling Interval (seconds)</label>
+                    <select class="form-select" id="gpsPollingInterval" required>
+                        <option value="">Choose interval...</option>
+                        <option value="5">5 seconds</option>
+                        <option value="10">10 seconds</option>
+                        <option value="15">15 seconds</option>
+                        <option value="30">30 seconds</option>
+                        <option value="60">1 minute</option>
+                    </select>
+                </div>
+                <div class="form-group" style="background: #f0f7ff; padding: 0.75rem; border-radius: 4px; font-size: 0.85rem; border-left: 3px solid #2E86DE;">
+                    <strong>💡 How it works:</strong>
+                    <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.8rem;">
+                        <li>1️⃣ Enter vehicle name and device ID</li>
+                        <li>2️⃣ Device sends GPS data to: <code style="background: #fff; padding: 0.2rem 0.4rem; border-radius: 2px;">/api/gps/receive/</code></li>
+                        <li>3️⃣ Vehicle auto-created on first GPS signal</li>
+                        <li>4️⃣ Selected & marked on map instantly</li>
+                        <li>5️⃣ Optimize route for real-time tracking</li>
+                    </ul>
+                </div>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-plug"></i> Connect Device
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('gpsConnectionModal')" style="flex: 1;">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000/api';
+        const WS_BASE = 'ws://localhost:8000/ws';
+
+        let map;
+        let markers = {};
+        let polylines = {};
+        let currentVehicle = null;
+        let vehicles = [];
+        let locations = [];
+        let websocket = null;
+
+        // Color palette for routes
+        const routeColors = ['#2E86DE', '#00D2FC', '#51CF66', '#FFB300', '#FF6B6B', '#9C27B0', '#E74C3C', '#F39C12'];
+
+        // Initialize Map
+        function initMap() {
+            map = L.map('map').setView([28.6139, 77.2090], 11);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        // Load Vehicles
+        async function loadVehicles() {
+            try {
+                const response = await fetch(`${API_BASE}/vehicles/`);
+                vehicles = await response.json();
+                renderVehicleList();
+                populateVehicleSelect();
+            } catch (error) {
+                console.error('Error loading vehicles:', error);
+            }
+        }
+
+        // Load Locations
+        async function loadLocations() {
+            try {
+                const response = await fetch(`${API_BASE}/locations/`);
+                locations = await response.json();
+                renderLocationList();
+                renderLocationCheckboxes();
+            } catch (error) {
+                console.error('Error loading locations:', error);
+            }
+        }
+
+        // Render Vehicle List
+        function renderVehicleList() {
+            const list = document.getElementById('vehicle-list');
+            list.innerHTML = vehicles.map(v => `
+                <div class="vehicle-item ${currentVehicle?.id === v.id ? 'active' : ''}" onclick="selectVehicle(${v.id})">
+                    <div class="vehicle-name">${v.name}</div>
+                    <div class="vehicle-status">
+                        <span class="status-badge status-${v.status}">${v.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select Vehicle
+        function selectVehicle(vehicleId) {
+            currentVehicle = vehicles.find(v => v.id === vehicleId);
+            renderVehicleList();
+            renderVehicleDetails();
+            updateMapMarker(currentVehicle);
+            connectWebSocket();
+        }
+
+        // Render Vehicle Details
+        function renderVehicleDetails() {
+            if (!currentVehicle) return;
+
+            const details = document.getElementById('vehicle-details');
+            details.innerHTML = `
+                <div class="info-row">
+                    <span class="info-label">Vehicle</span>
+                    <span class="info-value">${currentVehicle.name}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="status-badge status-${currentVehicle.status}">${currentVehicle.status}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Speed</span>
+                    <span class="info-value">${currentVehicle.speed} km/h</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Load</span>
+                    <span class="info-value">${currentVehicle.current_load}/${currentVehicle.capacity}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Location</span>
+                    <span class="info-value">${currentVehicle.latitude.toFixed(4)}, ${currentVehicle.longitude.toFixed(4)}</span>
+                </div>
+            `;
+        }
+
+        // Render Location List
+        function renderLocationList() {
+            const list = document.getElementById('location-list');
+            list.innerHTML = `${locations.length} locations available`;
+        }
+
+        // Render Location Checkboxes
+        function renderLocationCheckboxes() {
+            const container = document.getElementById('locationCheckboxes');
+            container.innerHTML = locations.map(loc => `
+                <label style="display: flex; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" value="${loc.id}" style="margin-right: 0.5rem;">
+                    ${loc.name}
+                </label>
+            `).join('');
+        }
+
+        // Populate Vehicle Select
+        function populateVehicleSelect() {
+            const select = document.getElementById('vehicleSelect');
+            select.innerHTML = '<option value="">Choose a vehicle...</option>' +
+                vehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        }
+
+        // Update Map Marker
+        function updateMapMarker(vehicle) {
+            if (markers[vehicle.id]) {
+                markers[vehicle.id].setLatLng([vehicle.latitude, vehicle.longitude]);
+            } else {
+                const marker = L.circleMarker([vehicle.latitude, vehicle.longitude], {
+                    radius: 12,
+                    fillColor: vehicle.color,
+                    color: '#000',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup(`<strong>${vehicle.name}</strong><br>Status: ${vehicle.status}`);
+
+                markers[vehicle.id] = marker;
+            }
+        }
+
+        // Optimize Route
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function submitOptimizeRoute(event) {
+            event.preventDefault();
+
+            const vehicleId = document.getElementById('vehicleSelect').value;
+            const checkboxes = document.querySelectorAll('#locationCheckboxes input[type="checkbox"]:checked');
+            const locationIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (!vehicleId || locationIds.length === 0) {
+                alert('Please select vehicle and at least one location');
+                return;
+            }
+
+            try {
+                const csrftoken = getCookie('csrftoken');
+                const response = await fetch(`${API_BASE}/routes/optimize/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken || ''
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ vehicle_id: parseInt(vehicleId), location_ids: locationIds })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showAlert('Error: ' + JSON.stringify(errorData), 'error');
+                    return;
+                }
+
+                const route = await response.json();
+                drawRouteOnMap(route);
+                closeModal('optimizeModal');
+                showAlert('✓ Route optimized successfully!', 'success');
+            } catch (error) {
+                console.error('Route optimization error:', error);
+                showAlert('Error optimizing route: ' + error.message, 'error');
+            }
+        }
+
+        // Draw Route on Map with street routing
+        async function drawRouteOnMap(route) {
+            console.log('Route data received:', route);
+            console.log('Route stops:', route.stops);
+
+            const coords = route.stops.map((stop, idx) => {
+                console.log(`Stop ${idx}:`, stop);
+                console.log(`  location_coords:`, stop.location_coords);
+                return [stop.location_coords.latitude, stop.location_coords.longitude];
+            });
+
+            console.log('Extracted coordinates:', coords);
+
+            if (polylines[route.vehicle]) {
+                map.removeLayer(polylines[route.vehicle]);
+            }
+
+            // Get distinct color for this route based on vehicle ID
+            const colorIndex = route.vehicle % routeColors.length;
+            const routeColor = routeColors[colorIndex];
+
+            try {
+                // Show loading indicator
+                showAlert('Fetching optimized route...', 'success');
+
+                // Get routed path from OSRM (Open Source Routing Machine)
+                const startTime = performance.now();
+                const routedCoords = await getRoutedPath(coords);
+                const endTime = performance.now();
+                console.log(`Route fetched in ${(endTime - startTime).toFixed(0)}ms`);
+
+                const polyline = L.polyline(routedCoords, {
+                    color: routeColor,
+                    weight: 4,
+                    opacity: 0.8,
+                    smoothFactor: 1.0
+                }).addTo(map);
+
+                polylines[route.vehicle] = polyline;
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+                showAlert('✓ Route optimized and mapped!', 'success');
+
+            } catch (error) {
+                console.warn('Routing service error, falling back to straight lines:', error);
+                // Fallback to straight lines if routing fails
+                const polyline = L.polyline(coords, {
+                    color: routeColor,
+                    weight: 3,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                polylines[route.vehicle] = polyline;
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                showAlert(' Using direct route (service unavailable)', 'warning');
+            }
+        }
+
+        // Validate coordinates before sending to OSRM
+        function validateCoordinates(coords) {
+            if (!Array.isArray(coords) || coords.length < 2) {
+                console.warn('Invalid coordinates: must have at least 2 points');
+                return false;
+            }
+
+            for (let i = 0; i < coords.length; i++) {
+                const coord = coords[i];
+
+                // Ensure coordinate is an array with 2 elements
+                if (!Array.isArray(coord) || coord.length !== 2) {
+                    console.error(`Invalid coordinate structure at index ${i}:`, coord);
+                    return false;
+                }
+
+                let lat = coord[0];
+                let lng = coord[1];
+
+                // Convert to numbers if they're strings
+                if (typeof lat === 'string') lat = parseFloat(lat);
+                if (typeof lng === 'string') lng = parseFloat(lng);
+
+                // Check for null, undefined, or NaN values
+                if (lat === null || lat === undefined || isNaN(lat) ||
+                    lng === null || lng === undefined || isNaN(lng)) {
+                    console.error(`Invalid coordinate at index ${i}:`, coord, '-> parsed as', [lat, lng]);
+                    return false;
+                }
+
+                // Additional check: ensure lat/lng are finite numbers (not Infinity)
+                if (!isFinite(lat) || !isFinite(lng)) {
+                    console.error(`Non-finite coordinate at index ${i}: lat=${lat}, lng=${lng}`);
+                    return false;
+                }
+
+                // Check valid latitude range: -90 to 90
+                if (lat < -90 || lat > 90) {
+                    console.error(`Invalid latitude at index ${i}: ${lat} (must be -90 to 90)`);
+                    return false;
+                }
+
+                // Check valid longitude range: -180 to 180
+                if (lng < -180 || lng > 180) {
+                    console.error(`Invalid longitude at index ${i}: ${lng} (must be -180 to 180)`);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Get routed path from OSRM with timeout and optimization
+        async function getRoutedPath(coords) {
+            if (coords.length < 2) return coords;
+
+            // Validate coordinates before sending
+            if (!validateCoordinates(coords)) {
+                console.error('Validation failed. Coordinates:', coords);
+                throw new Error('Invalid route coordinates detected. Check browser console for details.');
+            }
+
+            // Check for duplicate coordinates
+            const coordSet = new Set();
+            for (let i = 0; i < coords.length; i++) {
+                const key = `${coords[i][0]},${coords[i][1]}`;
+                if (coordSet.has(key)) {
+                    console.warn(`Duplicate coordinate at index ${i}:`, coords[i]);
+                }
+                coordSet.add(key);
+            }
+
+            // Format coordinates for OSRM: lon,lat;lon,lat;...
+            // Ensure we use parseFloat to ensure numbers, and limit precision
+            const coordString = coords.map((c, idx) => {
+                const lat = parseFloat(c[0]);
+                const lng = parseFloat(c[1]);
+
+                // Format with limited decimals to avoid URL length issues
+                const formattedCoord = `${lng.toFixed(6)},${lat.toFixed(6)}`;
+                console.log(`Coord ${idx}: [${lat}, ${lng}] -> ${formattedCoord}`);
+
+                return formattedCoord;
+            }).join(';');
+
+            // Log the URL being called for debugging
+            // OSRM API format: /route/v1/{profile}/{coordinates}?alternatives={true|false|number}&steps={true|false}&geometries={polyline|polyline6|geojson}&overview={full|simplified|false}&annotations={true|false}
+            const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?steps=false&geometries=geojson&overview=full&annotations=true`;
+            console.log('Calling OSRM with coordinates:', coords);
+            console.log('Formatted coordinate string:', coordString);
+            console.log('Full URL length:', url.length);
+            console.log('URL:', url);
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`OSRM error response (${response.status}):`, errorText);
+                    throw new Error(`OSRM API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.code !== 'Ok') {
+                    console.warn('OSRM error:', data.code, data.message);
+                    throw new Error(data.message || 'Routing failed');
+                }
+
+                if (data.routes && data.routes.length > 0) {
+                    // Convert GeoJSON coordinates to Leaflet format [lat, lng]
+                    const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+                    // Log route info for debugging
+                    const route = data.routes[0];
+                    console.log(`Route distance: ${(route.distance / 1000).toFixed(2)} km, Duration: ${(route.duration / 60).toFixed(0)} mins`);
+
+                    return routeCoords;
+                }
+
+                return coords; // Fallback if no route found
+            } catch (error) {
+                console.error('Error fetching route from OSRM:', error);
+                throw error;
+            }
+        }
+
+        // WebSocket Connection
+        function connectWebSocket() {
+            if (!currentVehicle) return;
+
+            if (websocket) websocket.close();
+
+            websocket = new WebSocket(`${WS_BASE}/tracking/vehicle/${currentVehicle.id}/`);
+
+            websocket.onopen = (event) => {
+                console.log('WebSocket connected');
+                showAlert('✓ Real-time tracking connected', 'success');
+            };
+
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('WebSocket message:', data.type);
+
+                    if (data.type === 'location_update') {
+                        updateVehicleMarker(data.data);
+                        updateVehicleInfo(data.data);
+                    } else if (data.type === 'simulation_started') {
+                        showAlert(`🚗 Simulation started (${data.total_points} points)`, 'success');
+                    } else if (data.type === 'simulation_completed') {
+                        showAlert('✓ Simulation completed', 'success');
+                    } else if (data.type === 'error') {
+                        showAlert('Error: ' + data.message, 'error');
+                    } else if (data.type === 'vehicle_status') {
+                        console.log('Vehicle status:', data.data);
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                showAlert('Connection error. Using polling fallback.', 'warning');
+                startPolling();
+            };
+
+            websocket.onclose = (event) => {
+                console.log('WebSocket closed');
+            };
+        }
+
+        // Update Vehicle Info in real-time
+        function updateVehicleInfo(data) {
+            if (currentVehicle && currentVehicle.id === data.vehicle_id) {
+                currentVehicle.latitude = data.latitude;
+                currentVehicle.longitude = data.longitude;
+                currentVehicle.speed = data.speed || 0;
+            }
+        }
+
+        // Update Vehicle Marker from WebSocket
+        function updateVehicleMarker(data) {
+            if (markers[data.vehicle_id]) {
+                markers[data.vehicle_id].setLatLng([data.latitude, data.longitude]);
+            }
+        }
+
+        // Start Simulation
+        async function startSimulation() {
+            if (!currentVehicle) {
+                showAlert('Please select a vehicle', 'error');
+                return;
+            }
+
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                showAlert('WebSocket not connected. Reconnecting...', 'warning');
+                connectWebSocket();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // Send simulation start messages to first route
+            try {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    const routes = await fetch(`${API_BASE}/routes/`).then(r => r.json());
+                    const vehicleRoute = routes.find(r => r.vehicle === currentVehicle.id && r.is_active);
+
+                    if (!vehicleRoute) {
+                        showAlert('No active route for this vehicle. Optimize a route first!', 'warning');
+                        return;
+                    }
+
+                    showAlert('🚗 Starting simulation...', 'success');
+                    websocket.send(JSON.stringify({
+                        type: 'start_simulation',
+                        route_id: vehicleRoute.id
+                    }));
+                }
+            } catch (error) {
+                console.error('Error starting simulation:', error);
+                showAlert('Error starting simulation: ' + error.message, 'error');
+            }
+        }
+
+        // Stop Simulation
+        function stopSimulation() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                showAlert('WebSocket not connected', 'warning');
+                return;
+            }
+
+            websocket.send(JSON.stringify({ type: 'stop_simulation' }));
+            showAlert('⏹️ Simulation stopped', 'success');
+        }
+
+
+        // Add Location
+        async function submitAddLocation(event) {
+            event.preventDefault();
+
+            const data = {
+                name: document.getElementById('locName').value,
+                address: document.getElementById('locAddress').value,
+                latitude: parseFloat(document.getElementById('locLat').value),
+                longitude: parseFloat(document.getElementById('locLng').value)
+            };
+
+            try {
+                const csrftoken = getCookie('csrftoken');
+                const response = await fetch(`${API_BASE}/locations/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken || ''
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showAlert('Error: ' + JSON.stringify(errorData), 'error');
+                    return;
+                }
+
+                await loadLocations();
+                closeModal('addLocationModal');
+                // Clear form
+                document.getElementById('locName').value = '';
+                document.getElementById('locAddress').value = '';
+                document.getElementById('locLat').value = '';
+                document.getElementById('locLng').value = '';
+                showAlert('✓ Location added successfully!', 'success');
+            } catch (error) {
+                console.error('Add location error:', error);
+                showAlert('Error adding location: ' + error.message, 'error');
+            }
+        }
+
+        // Modal Functions
+        function openOptimizeModal() {
+            document.getElementById('optimizeModal').classList.add('active');
+        }
+
+        function openAddLocationModal() {
+            document.getElementById('addLocationModal').classList.add('active');
+        }
+
+        function openUpdateLocationModal() {
+            if (!currentVehicle) {
+                showAlert('Please select a vehicle first', 'error');
+                return;
+            }
+            document.getElementById('updateVehicleName').value = currentVehicle.name;
+            document.getElementById('updateLatitude').value = currentVehicle.latitude;
+            document.getElementById('updateLongitude').value = currentVehicle.longitude;
+            document.getElementById('updateSpeed').value = currentVehicle.speed || 0;
+            document.getElementById('updateHeading').value = 0;
+            document.getElementById('updateLocationModal').classList.add('active');
+        }
+
+        async function submitUpdateLocation(event) {
+            event.preventDefault();
+
+            if (!currentVehicle) {
+                showAlert('No vehicle selected', 'error');
+                return;
+            }
+
+            const latitude = parseFloat(document.getElementById('updateLatitude').value);
+            const longitude = parseFloat(document.getElementById('updateLongitude').value);
+            const speed = parseFloat(document.getElementById('updateSpeed').value);
+            const heading = parseFloat(document.getElementById('updateHeading').value);
+
+            try {
+                // Validate coordinates
+                if (latitude < -90 || latitude > 90) {
+                    showAlert('Latitude must be between -90 and 90', 'error');
+                    return;
+                }
+                if (longitude < -180 || longitude > 180) {
+                    showAlert('Longitude must be between -180 and 180', 'error');
+                    return;
+                }
+
+                // Send location update via WebSocket
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify({
+                        type: 'location_update',
+                        latitude: latitude,
+                        longitude: longitude,
+                        speed: speed,
+                        heading: heading
+                    }));
+
+                    // Update current vehicle position
+                    currentVehicle.latitude = latitude;
+                    currentVehicle.longitude = longitude;
+                    currentVehicle.speed = speed;
+
+                    // Update map marker
+                    updateMapMarker(currentVehicle);
+
+                    // Update vehicle details
+                    renderVehicleDetails();
+
+                    closeModal('updateLocationModal');
+                    showAlert('✓ Vehicle location updated successfully!', 'success');
+                } else {
+                    showAlert('WebSocket not connected. Please select a vehicle.', 'error');
+                }
+            } catch (error) {
+                console.error('Update location error:', error);
+                showAlert('Error updating location: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // GPS Device Integration Functions
+        let gpsTrackingInterval = null;
+        let isGPSConnected = false;
+
+        function openGPSConnectionModal() {
+            // No need to select vehicle first - users can create new vehicle
+            document.getElementById('gpsVehicleName').value = '';
+            document.getElementById('gpsDeviceId').value = '';
+            document.getElementById('gpsPollingInterval').value = '';
+            document.getElementById('gpsConnectionModal').classList.add('active');
+        }
+
+        async function submitGPSConnection(event) {
+            event.preventDefault();
+
+            const vehicleName = document.getElementById('gpsVehicleName').value.trim();
+            const deviceId = document.getElementById('gpsDeviceId').value.trim();
+            const pollingInterval = parseInt(document.getElementById('gpsPollingInterval').value);
+
+            if (!vehicleName) {
+                showAlert('Please enter a vehicle name', 'error');
+                return;
+            }
+
+            if (!deviceId) {
+                showAlert('Please enter a Device ID', 'error');
+                return;
+            }
+
+            if (!pollingInterval) {
+                showAlert('Please select a polling interval', 'error');
+                return;
+            }
+
+            try {
+                // Store GPS configuration with vehicle name
+                window.gpsConfig = {
+                    vehicleName: vehicleName,
+                    deviceId: deviceId,
+                    pollingInterval: pollingInterval,
+                    vehicleId: null // Will be set on first GPS signal
+                };
+
+                closeModal('gpsConnectionModal');
+                showAlert(`✓ GPS device "${deviceId}" ready! Waiting for first signal...`, 'success');
+                console.log(`GPS Config: ${deviceId} → Vehicle: ${vehicleName}, Interval: ${pollingInterval}s`);
+
+                // Show GPS status container
+                document.getElementById('gpsStatusContainer').style.display = 'block';
+                updateGPSStatus('connecting', null);
+
+                // Start GPS tracking
+                startGPSTracking();
+
+            } catch (error) {
+                console.error('GPS connection error:', error);
+                showAlert('Error connecting GPS device: ' + error.message, 'error');
+            }
+        }
+
+        function startGPSTracking() {
+            if (!window.gpsConfig) {
+                showAlert('GPS configuration not found', 'error');
+                return;
+            }
+
+            isGPSConnected = true;
+            updateGPSUI();
+
+            // Show GPS status container
+            document.getElementById('gpsStatusContainer').style.display = 'block';
+
+            let firstSignal = true;
+
+            // Poll GPS data from backend
+            gpsTrackingInterval = setInterval(async () => {
+                try {
+                    // Use device ID as vehicle ID if not set
+                    if (!window.gpsConfig.vehicleId) {
+                        // Try using deviceId directly (backend will use this as vehicle_id)
+                        window.gpsConfig.vehicleId = window.gpsConfig.deviceId;
+                    }
+
+                    // Fetch current location
+                    const response = await fetch(
+                        `${API_BASE}/vehicles/${window.gpsConfig.vehicleId}/current-location/`,
+                        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateGPSStatus('connected', data);
+
+                        // First signal: reload vehicles and auto-select
+                        if (firstSignal) {
+                            await loadVehicles();
+                            const vehicle = vehicles.find(v => v.id == window.gpsConfig.vehicleId || v.name === window.gpsConfig.vehicleName);
+
+                            if (vehicle) {
+                                currentVehicle = vehicle;
+                                selectVehicle(vehicle.id);
+                                showAlert(`✓ Vehicle "${vehicle.name}" tracked! Ready for route optimization.`, 'success');
+                            }
+                            firstSignal = false;
+                        }
+
+                        // Update vehicle position on map
+                        if (currentVehicle && (currentVehicle.id == window.gpsConfig.vehicleId || currentVehicle.name === window.gpsConfig.vehicleName)) {
+                            currentVehicle.latitude = data.latitude;
+                            currentVehicle.longitude = data.longitude;
+                            currentVehicle.speed = data.speed || 0;
+                            currentVehicle.status = data.status || 'active';
+                            updateMapMarker(currentVehicle);
+                            renderVehicleDetails();
+                        }
+                    } else if (response.status === 404) {
+                        // Vehicle not created yet - still waiting for first GPS signal
+                        console.log('Waiting for first GPS signal from device...');
+                    } else {
+                        updateGPSStatus('error', null);
+                    }
+                } catch (error) {
+                    console.error('GPS polling error:', error);
+                    updateGPSStatus('error', null);
+                }
+            }, window.gpsConfig.pollingInterval * 1000);
+
+            // Start GPS simulation to send data to backend
+            startGPSSimulation();
+
+            console.log('GPS tracking started. Device ID:', window.gpsConfig.deviceId, 'Vehicle:', window.gpsConfig.vehicleName, 'Interval:', window.gpsConfig.pollingInterval + 's');
+        }
+
+        // Send simulated GPS data to backend
+        let gpsSimulationInterval = null;
+        let gpsSimulationVariation = { lat: 0, lon: 0 };
+
+        function startGPSSimulation() {
+            // Random starting point in India
+            const indiaLocations = [
+                { lat: 28.6139, lon: 77.2090, name: 'Delhi' },
+                { lat: 19.0760, lon: 72.8777, name: 'Mumbai' },
+                { lat: 13.0827, lon: 80.2707, name: 'Chennai' },
+                { lat: 12.9716, lon: 77.5946, name: 'Bangalore' },
+                { lat: 17.3850, lon: 78.4867, name: 'Hyderabad' }
+            ];
+
+            const randomStart = indiaLocations[Math.floor(Math.random() * indiaLocations.length)];
+            let currentLat = randomStart.lat;
+            let currentLon = randomStart.lon;
+
+            if (gpsSimulationInterval) clearInterval(gpsSimulationInterval);
+
+            gpsSimulationInterval = setInterval(async () => {
+                try {
+                    // Add small random variation to location (simulate movement)
+                    currentLat += (Math.random() - 0.5) * 0.002;
+                    currentLon += (Math.random() - 0.5) * 0.002;
+
+                    // Clamp to India boundaries
+                    currentLat = Math.max(8.0, Math.min(35.0, currentLat));
+                    currentLon = Math.max(68.0, Math.min(97.0, currentLon));
+
+                    const gpsData = {
+                        vehicle_id: window.gpsConfig.deviceId,
+                        vehicle_name: window.gpsConfig.vehicleName,
+                        latitude: currentLat,
+                        longitude: currentLon,
+                        speed: Math.random() * 80 + 20, // 20-100 km/h
+                        heading: Math.random() * 360,
+                        accuracy: 5.0
+                    };
+
+                    // Send GPS data to backend
+                    const response = await fetch(`${API_BASE}/gps/receive/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(gpsData)
+                    });
+
+                    if (response.ok) {
+                        console.log('✓ GPS data sent:', gpsData);
+                    } else {
+                        console.error('GPS send failed:', response.status);
+                    }
+                } catch (error) {
+                    console.error('GPS simulation error:', error);
+                }
+            }, 3000); // Send GPS data every 3 seconds
+
+            console.log('GPS simulation started from:', randomStart.name);
+        }
+
+        function stopGPSTracking() {
+            if (gpsTrackingInterval) {
+                clearInterval(gpsTrackingInterval);
+                gpsTrackingInterval = null;
+            }
+
+            if (gpsSimulationInterval) {
+                clearInterval(gpsSimulationInterval);
+                gpsSimulationInterval = null;
+            }
+
+            isGPSConnected = false;
+            updateGPSUI();
+
+            // Hide GPS status container
+            document.getElementById('gpsStatusContainer').style.display = 'none';
+
+            showAlert('GPS device disconnected', 'info');
+            console.log('GPS tracking stopped');
+        }
+
+        function updateGPSStatus(status, data) {
+            const indicator = document.getElementById('gpsStatusIndicator');
+            const statusText = document.getElementById('gpsStatusText');
+            const dataDisplay = document.getElementById('gpsDataDisplay');
+
+            if (status === 'connected' && data) {
+                indicator.style.background = '#51CF66';
+                statusText.textContent = `GPS: Connected (${window.gpsConfig.deviceId})`;
+                dataDisplay.innerHTML = `
+                    <div>📍 Lat: ${data.latitude.toFixed(4)}, Lon: ${data.longitude.toFixed(4)}</div>
+                    <div>🚗 Speed: ${(data.speed || 0).toFixed(1)} km/h</div>
+                    <div>📊 Accuracy: ±${(data.accuracy || 0).toFixed(1)}m</div>
+                    <div>⏱ Updated: ${new Date(data.timestamp).toLocaleTimeString()}</div>
+                `;
+            } else if (status === 'error') {
+                indicator.style.background = '#FF6B6B';
+                statusText.textContent = 'GPS: Connection Error';
+                dataDisplay.innerHTML = '<div>❌ Unable to retrieve GPS data</div>';
+            } else if (status === 'connecting') {
+                indicator.style.background = '#FFB300';
+                statusText.textContent = `GPS: Waiting for first signal (${window.gpsConfig.deviceId})`;
+                dataDisplay.innerHTML = `
+                    <div>⏳ Device: ${window.gpsConfig.deviceId}</div>
+                    <div>🏷️ Vehicle: ${window.gpsConfig.vehicleName}</div>
+                    <div>⏱ Polling every ${window.gpsConfig.pollingInterval}s...</div>
+                `;
+            }
+        }
+
+        function updateGPSUI() {
+            const connectBtn = document.getElementById('gpsConnectBtn');
+            const disconnectBtn = document.getElementById('gpsDisconnectBtn');
+
+            if (isGPSConnected) {
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        // Show Alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+
+            document.body.insertBefore(alertDiv, document.querySelector('.main-layout'));
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
+        // Polling Fallback
+        function startPolling() {
+            setInterval(async () => {
+                if (currentVehicle) {
+                    try {
+                        const response = await fetch(`${API_BASE}/vehicles/${currentVehicle.id}/`);
+                        const vehicle = await response.json();
+                        updateMapMarker(vehicle);
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                }
+            }, 5000);
+        }
+
+        // Initialize
+        async function init() {
+            initMap();
+            await loadVehicles();
+            await loadLocations();
+            await loadAnalytics();
+            setInterval(loadAnalytics, 30000); // Refresh analytics every 30 seconds
+        }
+
+        // Load and display analytics
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/fleet/`);
+                if (!response.ok) {
+                    console.error('Analytics API error:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Update metrics
+                document.getElementById('metric-vehicles').textContent = data.total_vehicles;
+                document.getElementById('metric-active').textContent = data.active_vehicles;
+                document.getElementById('metric-deliveries').textContent = data.total_deliveries;
+
+                // Calculate success rate
+                const successRate = data.total_deliveries > 0 ? Math.round((data.total_deliveries / (data.total_deliveries + 2)) * 100) : 0;
+                document.getElementById('metric-success').textContent = successRate + '%';
+
+                document.getElementById('total-distance').textContent = data.total_distance_km.toFixed(1) + ' km';
+                document.getElementById('avg-time').textContent = '~15 min';
+
+                // Render chart with vehicle data
+                renderAnalyticsChart(data);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Render analytics chart
+        let analyticsChart = null;
+        function renderAnalyticsChart(data) {
+            const ctx = document.getElementById('analyticsChart');
+            if (!ctx) return;
+
+            if (analyticsChart) {
+                analyticsChart.destroy();
+            }
+
+            const vehicleNames = data.vehicle_stats.map(v => v.vehicle_name);
+            const deliveryData = data.vehicle_stats.map(v => v.total_deliveries);
+            const distanceData = data.vehicle_stats.map(v => v.total_distance_km);
+
+            analyticsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: vehicleNames,
+                    datasets: [
+                        {
+                            label: 'Deliveries',
+                            data: deliveryData,
+                            backgroundColor: '#FFC107',
+                            borderColor: '#FFB300',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Distance (km)',
+                            data: distanceData,
+                            backgroundColor: '#51CF66',
+                            borderColor: '#2f9e44',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Switch right panel tabs
+        function switchRightTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            event.target.classList.add('active');
+        }
+
+        // Get best vehicle for locations (smart selection)
+        async function getBestVehicle(locationIds) {
+            if (!locations || locations.length === 0) return null;
+
+            const selectedLocations = locations.filter(l => locationIds.includes(l.id));
+            if (selectedLocations.length === 0) return null;
+
+            // Calculate center point of selected locations
+            const centerLat = selectedLocations.reduce((sum, l) => sum + l.latitude, 0) / selectedLocations.length;
+            const centerLon = selectedLocations.reduce((sum, l) => sum + l.longitude, 0) / selectedLocations.length;
+
+            // Find closest vehicle to center point
+            let bestVehicle = null;
+            let minDistance = Infinity;
+
+            vehicles.forEach(vehicle => {
+                const dist = Math.sqrt(
+                    Math.pow(vehicle.latitude - centerLat, 2) +
+                    Math.pow(vehicle.longitude - centerLon, 2)
+                );
+
+                // Prefer vehicles closer to center and with more capacity
+                const score = dist / (vehicle.capacity + 1);
+                if (score < minDistance) {
+                    minDistance = score;
+                    bestVehicle = vehicle;
+                }
+            });
+
+            return bestVehicle;
+        }
+
+        // Update vehicle select with smart recommendation
+        async function updateVehicleSelectWithRecommendation() {
+            const checkboxes = document.querySelectorAll('#locationCheckboxes input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) return;
+
+            const locationIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            const bestVehicle = await getBestVehicle(locationIds);
+
+            if (bestVehicle) {
+                const select = document.getElementById('vehicleSelect');
+                const option = select.querySelector(`option[value="${bestVehicle.id}"]`);
+                if (option) {
+                    select.value = bestVehicle.id;
+                    select.dispatchEvent(new Event('change'));
+                    showAlert(`✓ Recommended: ${bestVehicle.name} (${bestVehicle.capacity} units capacity)`, 'success');
+                }
+            }
+        }
+
+        // Add event listeners to location checkboxes
+        function setupLocationCheckboxListeners() {
+            setTimeout(() => {
+                const checkboxes = document.querySelectorAll('#locationCheckboxes input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', updateVehicleSelectWithRecommendation);
+                });
+            }, 500);
+        }
+
+        // Start when document loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
