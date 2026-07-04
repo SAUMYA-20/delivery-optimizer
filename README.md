@@ -4,6 +4,7 @@ A **complete, production-ready logistics tracking and route optimization system*
 
 ## Demo
 
+Click here: [DelviOp Demo Video](https://canva.link/3n3vjnvxx33uzln)
 
 ## ✨ Features
 
